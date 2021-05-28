@@ -161,7 +161,7 @@ void showUsage() {
     puts("  -f fps      a float, the refresh rate of the program, default 22.38 (which is equal to 55.95 / 2.5)");
     puts("  -v speed    a float, the speed of rotating, default is 0.01");
     puts("  -k kernel   a float, the closer to zero, the faster not-so-beautiful frame runs over. default is 0.7");
-    puts("  -p phase    a float in [0, 1], represent the phase. default 0.3");
+    puts("  -p phase    a float in [0, 1], represent the phase. default 0.4");
     puts("  -u profile  use a profile, [slow, medium, fast]");
     puts("  -r          reverse the rotating");
     puts("  -h          show help");
