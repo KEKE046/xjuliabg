@@ -13,6 +13,7 @@ using namespace std;
 double fps = 59.95 / 2.5;
 double speed = .01f;
 double kernel = .7f;
+double phase = .4;
 bool reversed = false;
 
 float vertices[][5] = {
@@ -56,8 +57,11 @@ int createProgram(const vector<unsigned> & shaders) {
 }
 
 inline float timeKernel(float x, float t) {
-    if(x < 0.5) return  .5 / pow(0.5, t) * pow(x, t) ;
-    return 1 - .5 / pow(0.5, t) * pow(1 - x, t) ;
+    float add = 0;
+    if(x > 0.5) {add = 0.5; x -= 0.5;}
+    x = x * 2;
+    if(x < 0.5) return  add + .25 / pow(0.5, t) * pow(x, t) ;
+    return add + .5 - .25 / pow(0.5, t) * pow(1 - x, t);
 }
 
 class Screen{
@@ -119,7 +123,7 @@ public:
         glUseProgram(program);
         double time = glfwGetTime();
         float scale = .75f; 
-        double scaled_time = time * speed;
+        double scaled_time = time * speed + phase;
         scaled_time -= floor(scaled_time);
         scaled_time = timeKernel(scaled_time, kernel);
         if(reversed) scaled_time = 1 - scaled_time;
@@ -154,15 +158,33 @@ void showUsage() {
     puts("usage: ");
     puts("  juliabg -f fps -v speed -k time_kernel -r");
     puts("params:");
-    puts("  -f fps    a float, the refresh rate of the program, default 22.38 (which is equal to 55.95 / 2.5)");
-    puts("  -v speed  a float, the speed of rotating, default is 0.01");
-    puts("  -k kernel a float, the closer to zero, the faster not-so-beautiful frame runs over. default is 0.7");
-    puts("  -r        reverse the rotating");
-    puts("  -h        show help");
+    puts("  -f fps      a float, the refresh rate of the program, default 22.38 (which is equal to 55.95 / 2.5)");
+    puts("  -v speed    a float, the speed of rotating, default is 0.01");
+    puts("  -k kernel   a float, the closer to zero, the faster not-so-beautiful frame runs over. default is 0.7");
+    puts("  -p phase    a float in [0, 1], represent the phase. default 0.3");
+    puts("  -u profile  use a profile, [slow, medium, fast]");
+    puts("  -r          reverse the rotating");
+    puts("  -h          show help");
+}
+
+void useProfile(const char * profile) {
+    switch (profile[0])
+    {
+    case 's':
+        fps = 5;  speed = 5e-5; kernel = .5f;
+        break;
+    case 'm':
+        fps = 16; speed = 5e-4;
+        break;
+    case 'f':
+        fps = 22.38; speed = 1e-2;
+    default:
+        break;
+    }
 }
 
 int main(int argc, char ** argv) {
-    for(char c; (c=getopt(argc, argv, "f:v:k:rh")) != -1;) {
+    for(char c; (c=getopt(argc, argv, "f:v:k:rhp:u:")) != -1;) {
         switch(c) {
             case 'f':
                 fps = atof(optarg);
@@ -175,6 +197,12 @@ int main(int argc, char ** argv) {
                 break;
             case 'r':
                 reversed = true;
+                break;
+            case 'p':
+                phase = atof(optarg);
+                break;
+            case 'u':
+                useProfile(optarg);
                 break;
             case 'h':
                 showUsage();
