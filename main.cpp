@@ -8,6 +8,7 @@
 #include<memory>
 #include<unordered_map>
 #include<algorithm>
+#include<sys/time.h>
 using namespace std;
 
 double fps = 59.95 / 2.5;
@@ -56,12 +57,9 @@ int createProgram(const vector<unsigned> & shaders) {
     return program;
 }
 
-inline float timeKernel(float x, float t) {
-    float add = 0;
-    if(x > 0.5) {add = 0.5; x -= 0.5;}
-    x = x * 2;
-    if(x < 0.5) return  add + .25 / pow(0.5, t) * pow(x, t) ;
-    return add + .5 - .25 / pow(0.5, t) * pow(1 - x, t);
+inline double timeKernel(double x, double t) {
+    if(x < 0.5) return  .5 / pow(0.5, t) * pow(x, t) ;
+    return 1 - .5 / pow(0.5, t) * pow(1 - x, t);
 }
 
 class Screen{
@@ -121,14 +119,13 @@ public:
     void tick() {
         glfwMakeContextCurrent(window);
         glUseProgram(program);
-        double time = glfwGetTime();
-        float scale = .75f; 
-        double scaled_time = time * speed + phase;
+        double scaled_time = glfwGetTime() * speed + phase;
+        double scale = .78;
         scaled_time -= floor(scaled_time);
         scaled_time = timeKernel(scaled_time, kernel);
         if(reversed) scaled_time = 1 - scaled_time;
-        float x = cos(2 * M_PI * scaled_time);
-        float y = sin(2 * M_PI * scaled_time);
+        double x = cos(2 * M_PI * scaled_time);
+        double y = sin(2 * M_PI * scaled_time);
         glUniform2f(glGetUniformLocation(program, "C"), scale * x, scale * y);
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -139,19 +136,17 @@ public:
 
 vector<unique_ptr<Screen>> activeScreens;
 
+void setupMonitors() {
+    activeScreens.clear();
+    int nMonitors;
+    GLFWmonitor ** monitors = glfwGetMonitors(&nMonitors);
+    for(int i = 0; i < nMonitors; i++) {
+        activeScreens.emplace_back(new Screen(monitors[i]));
+    }
+}
+
 void monitor_callback(GLFWmonitor * monitor, int type) {
-    if(type == GLFW_CONNECTED) {
-        activeScreens.emplace_back(new Screen(monitor));
-    }
-    if(type == GLFW_DISCONNECTED) {
-        for(int i = 0; i < activeScreens.size(); i++) {
-            if(activeScreens[i]->monitor == monitor) {
-                swap(activeScreens[i], activeScreens.back());
-                activeScreens.pop_back();
-                break;
-            }
-        }
-    }
+    setupMonitors();
 }
 
 void showUsage() {
@@ -161,7 +156,7 @@ void showUsage() {
     puts("  -f fps      a float, the refresh rate of the program, default 22.38 (which is equal to 55.95 / 2.5)");
     puts("  -v speed    a float, the speed of rotating, default is 0.01");
     puts("  -k kernel   a float, the closer to zero, the faster not-so-beautiful frame runs over. default is 0.7");
-    puts("  -p phase    a float in [0, 1], represent the phase. default 0.4");
+    puts("  -p phase    a float in [0, 1], represent the phase. default is calculated by current time");
     puts("  -u profile  use a profile, [slow, medium, fast]");
     puts("  -r          reverse the rotating");
     puts("  -h          show help");
@@ -171,19 +166,22 @@ void useProfile(const char * profile) {
     switch (profile[0])
     {
     case 's':
-        fps = 5;  speed = 5e-5; kernel = .5f;
+        fps = 5;  speed = 1e-4;
         break;
     case 'm':
-        fps = 16; speed = 5e-4;
+        fps = 11; speed = 1e-3;
         break;
     case 'f':
-        fps = 22.38; speed = 1e-2;
+        fps = 22.38; speed = 5e-3;
     default:
         break;
     }
 }
 
 int main(int argc, char ** argv) {
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    phase = tv.tv_usec * 1e-6;
     for(char c; (c=getopt(argc, argv, "f:v:k:rhp:u:")) != -1;) {
         switch(c) {
             case 'f':
@@ -216,11 +214,7 @@ int main(int argc, char ** argv) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 
-    int nMonitors;
-    GLFWmonitor ** monitors = glfwGetMonitors(&nMonitors);
-    for(int i = 0; i < nMonitors; i++) {
-        activeScreens.emplace_back(new Screen(monitors[i]));
-    }
+    setupMonitors();
     glfwSetMonitorCallback(monitor_callback);
 
     while(true) {
