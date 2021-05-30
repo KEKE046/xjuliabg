@@ -13,9 +13,26 @@ using namespace std;
 
 double fps = 59.95 / 2.5;
 double speed = .01f;
-double kernel = .7f;
+double kernel = .6f;
 double phase = .4;
+double scale = .78;
 bool reversed = false;
+
+void useProfile(const char * profile) {
+    switch (profile[0])
+    {
+    case 's':
+        fps = 5;  speed = 1e-4; kernel = .6;
+        break;
+    case 'm':
+        fps = 11; speed = 1e-3; kernel = .65;
+        break;
+    case 'f':
+    default:
+        fps = 22.38; speed = 5e-3; kernel = .7;
+        break;
+    }
+}
 
 float vertices[][5] = {
     -1.f, -1.f, 0.0f, 0.f, 0.f,
@@ -120,7 +137,6 @@ public:
         glfwMakeContextCurrent(window);
         glUseProgram(program);
         double scaled_time = glfwGetTime() * speed + phase;
-        double scale = .78;
         scaled_time -= floor(scaled_time);
         scaled_time = timeKernel(scaled_time, kernel);
         if(reversed) scaled_time = 1 - scaled_time;
@@ -162,26 +178,11 @@ void showUsage() {
     puts("  -h          show help");
 }
 
-void useProfile(const char * profile) {
-    switch (profile[0])
-    {
-    case 's':
-        fps = 5;  speed = 1e-4;
-        break;
-    case 'm':
-        fps = 11; speed = 1e-3;
-        break;
-    case 'f':
-        fps = 22.38; speed = 5e-3;
-    default:
-        break;
-    }
-}
-
 int main(int argc, char ** argv) {
     struct timeval tv;
     gettimeofday(&tv,NULL);
     phase = tv.tv_usec * 1e-6;
+    useProfile("fast");
     for(char c; (c=getopt(argc, argv, "f:v:k:rhp:u:")) != -1;) {
         switch(c) {
             case 'f':
